@@ -3,14 +3,81 @@
 {% block content %}
 <div class="container mt-5">
     <h2>Your Profile</h2>
-    <div class="card p-3">
-        <h4>Username: {{ user.username }}</h4>
-        <p><strong>Email:</strong> {{ user.email }}</p>
-        <p><strong>Bio:</strong> {{ user.bio }}</p>
-        <p><strong>Preferred Destination:</strong> {{ user.destination }}</p>
-        <p><strong>Budget Range:</strong> {{ user.budget }}</p>
-        <p><strong>Travel Style:</strong> {{ user.style }}</p>
-        <a href="/edit-profile" class="btn btn-warning">Edit Profile</a>
+    <div id="profile-container">
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Loading profile...</p>
+        </div>
+    </div>
+    
+    <div class="mt-4">
+        <a href="/preferences" class="btn btn-primary">Update Travel Preferences</a>
+    </div>
+    
+    <h3 class="mt-5">Notifications</h3>
+    <div id="notifications-container">
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Loading notifications...</p>
+        </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const profileContainer = document.getElementById('profile-container');
+        
+        try {
+            const response = await fetch('/api/users/profile');
+            if (!response.ok) {
+                throw new Error('Failed to fetch profile');
+            }
+            
+            const result = await response.json();
+            
+            if (result.status === 'success' && result.data) {
+                const userData = result.data;
+                
+                let profileHTML = `
+                    <div class="card p-3">
+                        <h4>Name: ${userData.name}</h4>
+                        <p><strong>Email:</strong> ${userData.email}</p>
+                `;
+                
+                if (userData.preferences) {
+                    profileHTML += `
+                        <hr>
+                        <h5>Travel Preferences</h5>
+                        <p><strong>Preferred Destination:</strong> ${userData.preferences.destination || 'Not specified'}</p>
+                        <p><strong>Budget Range:</strong> ${userData.preferences.budget || 'Not specified'}</p>
+                        <p><strong>Travel Style:</strong> ${userData.preferences.travel_style || 'Not specified'}</p>
+                        <p><strong>Accommodation Type:</strong> ${userData.preferences.accommodation_type || 'Not specified'}</p>
+                        <p><strong>Food Preferences:</strong> ${userData.preferences.food_preferences?.join(', ') || 'Not specified'}</p>
+                        <p><strong>Arrival Time:</strong> ${userData.preferences.arrival_time || 'Not specified'}</p>
+                    `;
+                } else {
+                    profileHTML += `
+                        <hr>
+                        <p>No travel preferences set. <a href="/preferences">Set your preferences</a> to find travel matches!</p>
+                    `;
+                }
+                
+                profileHTML += `
+                    </div>
+                `;
+                
+                profileContainer.innerHTML = profileHTML;
+            } else {
+                profileContainer.innerHTML = `<p>Error loading profile data. Please try again later.</p>`;
+            }
+        } catch (error) {
+            console.error('Error fetching profile:', error);
+            profileContainer.innerHTML = `<p>Error loading profile data. Please try again later.</p>`;
+        }
+    });
+</script>
 {% endblock %}

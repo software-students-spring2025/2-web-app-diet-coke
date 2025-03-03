@@ -1,0 +1,130 @@
+<!-- BOOKMARKS PAGE (bookmarks.html) -->
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+    <h2>Your Bookmarked Travelers</h2>
+    <p>Here are the travelers you've bookmarked for future reference:</p>
+    <div id="bookmarks-container">
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p>Loading bookmarks...</p>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const bookmarksContainer = document.getElementById('bookmarks-container');
+        
+        try {
+            const response = await fetch('/api/bookmarks');
+            if (!response.ok) {
+                throw new Error('Failed to fetch bookmarks');
+            }
+            
+            const result = await response.json();
+            
+            if (result.status === 'success' && result.data) {
+                const bookmarks = result.data;
+                
+                if (bookmarks.length === 0) {
+                    bookmarksContainer.innerHTML = `
+                        <div class="alert alert-info">
+                            <p>You haven't bookmarked any travelers yet.</p>
+                            <p>Visit the <a href="/matches">Matches</a> page to find and bookmark travelers.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                let bookmarksHTML = '<div class="row">';
+                
+                bookmarks.forEach(bookmark => {
+                    const userData = bookmark.user;
+                    
+                    bookmarksHTML += `
+                        <div class="col-md-6 col-lg-4 mb-4">
+                            <div class="card match-card">
+                                <div class="card-body">
+                                    <h5 class="card-title">${userData.name}</h5>
+                                    <p class="card-text">
+                                        <strong>Destination:</strong> ${userData.preferences?.destination || 'Not specified'}<br>
+                                        <strong>Travel Style:</strong> ${userData.preferences?.travel_style || 'Not specified'}<br>
+                                        <strong>Budget:</strong> ${userData.preferences?.budget || 'Not specified'}
+                                    </p>
+                                    <div class="match-actions">
+                                        <button class="btn btn-sm btn-primary view-profile" data-user-id="${userData.id}">View Profile</button>
+                                        <button class="btn btn-sm btn-info message-user" data-user-id="${userData.id}">Message</button>
+                                        <button class="btn btn-sm btn-danger remove-bookmark" data-user-id="${userData.id}">Remove</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                bookmarksHTML += '</div>';
+                
+                bookmarksContainer.innerHTML = bookmarksHTML;
+                
+                // Setup profile view buttons
+                document.querySelectorAll('.view-profile').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const userId = button.getAttribute('data-user-id');
+                        window.location.href = `/profile/${userId}`;
+                    });
+                });
+                
+                // Setup message buttons
+                document.querySelectorAll('.message-user').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const userId = button.getAttribute('data-user-id');
+                        window.location.href = `/messages/${userId}`;
+                    });
+                });
+                
+                // Setup remove bookmark buttons
+                document.querySelectorAll('.remove-bookmark').forEach(button => {
+                    button.addEventListener('click', async () => {
+                        const userId = button.getAttribute('data-user-id');
+                        if (confirm('Are you sure you want to remove this bookmark?')) {
+                            try {
+                                const response = await fetch(`/api/bookmarks/${userId}`, {
+                                    method: 'DELETE'
+                                });
+                                
+                                const result = await response.json();
+                                
+                                if (response.ok && result.status === 'success') {
+                                    // Refresh the page
+                                    window.location.reload();
+                                } else {
+                                    alert(result.message || 'Failed to remove bookmark');
+                                }
+                            } catch (error) {
+                                console.error('Error removing bookmark:', error);
+                                alert('An error occurred while removing the bookmark');
+                            }
+                        }
+                    });
+                });
+            } else {
+                bookmarksContainer.innerHTML = `
+                    <div class="alert alert-danger">
+                        <p>Error loading bookmarks. Please try again later.</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Error fetching bookmarks:', error);
+            bookmarksContainer.innerHTML = `
+                <div class="alert alert-danger">
+                    <p>Error loading bookmarks. Please try again later.</p>
+                </div>
+            `;
+        }
+    });
+</script>
+{% endblock %} 
