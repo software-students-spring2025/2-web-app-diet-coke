@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 try:
-    mongo_uri = "mongodb://localhost:27017/travel_match_db"  # Hardcoded local URI for testing
+    mongo_uri = os.getenv('MONGO_URI', 'mongodb://localhost:27017/')
     client = MongoClient(mongo_uri)
     db = client.travel_match_db
     print("Connected to MongoDB!")
