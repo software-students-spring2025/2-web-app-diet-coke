@@ -157,11 +157,31 @@ input, select, textarea {
 }
 
 .notification-content {
-  flex: 1;
+  padding: 10px;
+  flex-grow: 1;
+}
+
+.notification-content.clickable {
+  cursor: pointer;
+  position: relative;
+}
+
+.notification-content.clickable:hover {
+  background-color: var(--bg-hover);
+}
+
+.notification-content.clickable::after {
+  content: '→';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2em;
+  opacity: 0.5;
 }
 
 .notification p {
-  margin: 0 0 5px 0;
+  margin-bottom: 5px;
 }
 
 .notification small {

@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, abort
+from flask import Flask, request, jsonify, render_template, abort, redirect
 from flask_cors import CORS
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
@@ -58,6 +58,10 @@ def serve_page(page_name):
     Serve HTML templates based on the page name
     This allows for dynamic routing to any template
     """
+    # For root route, redirect logged-in users to profile page
+    if page_name == 'index' and current_user.is_authenticated:
+        return redirect('/profile')
+    
     # List of valid pages (add more as needed) #TODO: Add more pages
     valid_pages = [
         'index', 'login', 'register', 'profile', 'preferences',
@@ -75,6 +79,43 @@ def serve_page(page_name):
         # If template doesn't exist, return 404
         app.logger.error(f"Error serving template {page_name}: {str(e)}")
         abort(404)
+
+@app.route('/profile/<user_id>')
+def user_profile(user_id):
+    """
+    Serve a specific user's profile page
+    """
+    try:
+        # Convert user_id to ObjectId for MongoDB query
+        user_id_obj = ObjectId(user_id)
+        # Return the user profile template with the user_id
+        return render_template('user_profile.html', user_id=user_id, active_page='profile')
+    except Exception as e:
+        app.logger.error(f"Error serving user profile for {user_id}: {str(e)}")
+        abort(404)
+
+@app.route('/messages/<user_id>')
+@login_required
+def view_messages(user_id):
+    """
+    Serve the message view page for a specific user
+    """
+    try:
+        # Convert user_id to ObjectId for MongoDB query
+        user_id_obj = ObjectId(user_id)
+        # Return the message view template with the user_id
+        return render_template('message_view.html', user_id=user_id, current_user=current_user, active_page='messages')
+    except Exception as e:
+        app.logger.error(f"Error serving messages for {user_id}: {str(e)}")
+        abort(404)
+
+@app.route('/messages')
+@login_required
+def messages_dashboard():
+    """
+    Serve the messages dashboard page showing all conversations
+    """
+    return render_template('messages.html', active_page='messages')
 
 # Authentication routes
 @app.route('/api/auth/register', methods=['POST'])
@@ -155,9 +196,20 @@ def login():
 @app.route('/api/auth/logout')
 @login_required
 def logout():
-    """Logout a user"""
+    """
+    Log out the current user by removing their session.
+    """
     logout_user()
-    return jsonify({"status": "success", "message": "Logged out successfully"})
+    return jsonify({"status": "success", "message": "Logged out successfully!"})
+
+@app.route('/logout')
+@login_required
+def logout_page():
+    """
+    Logout page that redirects to login page after logging out
+    """
+    logout_user()
+    return redirect('/login')
 
 # Error handlers
 @app.errorhandler(404)
@@ -267,7 +319,58 @@ def delete_user_profile():
     logout_user()
 
     return jsonify({"status": "success", "message": "Account deleted successfully"})
-    
+
+@app.route('/api/users/public/<user_id>', methods=['GET'])
+@login_required
+def get_public_user_profile(user_id):
+    """
+    Get a specific user's public profile data.
+    """
+    try:
+        # Convert string ID to ObjectId
+        user_id_obj = ObjectId(user_id)
+        
+        # Find user by ID
+        user = db.users.find_one({'_id': user_id_obj})
+        
+        if not user:
+            return jsonify({
+                'status': 'error',
+                'message': 'User not found'
+            }), 404
+        
+        # Get preferences using TravelPreference model
+        preferences = TravelPreference.get_by_user_id(user_id)
+        
+        # Prepare public user data
+        user_data = {
+            'id': str(user['_id']),
+            'name': user['name'],
+            'preferences': None
+        }
+        
+        # Add preferences data if available
+        if preferences:
+            user_data['preferences'] = {
+                'destination': preferences.get('destination'),
+                'budget': preferences.get('budget'),
+                'travel_style': preferences.get('travel_style'),
+                'food_preferences': preferences.get('food_preferences'),
+                'accommodation_type': preferences.get('accommodation_type'),
+                'arrival_time': preferences.get('arrival_time')
+            }
+        
+        return jsonify({
+            'status': 'success',
+            'data': user_data
+        }), 200
+        
+    except Exception as e:
+        app.logger.error(f"Error fetching user profile: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': f'Error retrieving user profile: {str(e)}'
+        }), 500
 
 # Travel Preferences Routes
 @app.route('/api/preferences', methods=['GET'])
@@ -392,15 +495,35 @@ def get_bookmarks():
     bookmarked_users = Bookmark.get_by_user(current_user.id)
     
     # Format the response
-    formatted_users = []
+    formatted_bookmarks = []
     for user in bookmarked_users:
-        formatted_users.append({
-            "id": str(user["_id"]),
-            "name": user.get("name", ""),
-            "profile_picture": user.get("profile_picture", "")
-        })
+        # Get user preferences using TravelPreference model
+        user_id = str(user["_id"])
+        preferences = TravelPreference.get_by_user_id(user_id)
+        
+        bookmark_data = {
+            "user": {
+                "id": user_id,
+                "name": user.get("name", ""),
+                "profile_picture": user.get("profile_picture", ""),
+                "preferences": None
+            }
+        }
+        
+        # Add preferences if available
+        if preferences:
+            bookmark_data["user"]["preferences"] = {
+                "destination": preferences.get("destination"),
+                "budget": preferences.get("budget"),
+                "travel_style": preferences.get("travel_style"),
+                "food_preferences": preferences.get("food_preferences"),
+                "accommodation_type": preferences.get("accommodation_type"),
+                "arrival_time": preferences.get("arrival_time")
+            }
+        
+        formatted_bookmarks.append(bookmark_data)
     
-    return jsonify({"status": "success", "data": formatted_users})
+    return jsonify({"status": "success", "data": formatted_bookmarks})
 
 @app.route('/api/bookmarks/<user_id>', methods=['POST'])
 @login_required
@@ -469,16 +592,25 @@ def get_conversations():
             }).sort("created_at", -1).limit(1)
             
             latest_message = list(latest_message)
-            message_preview = latest_message[0]["content"] if latest_message else ""
             
-            conversations.append({
+            # Format the conversation data
+            conversation_data = {
                 "user": {
                     "id": str(user["_id"]),
                     "name": user.get("name", ""),
                     "profile_picture": user.get("profile_picture", "")
                 },
-                "latest_message": message_preview
-            })
+                "unread_count": 0  # Placeholder for unread count
+            }
+            
+            # Add last message data if available
+            if latest_message:
+                conversation_data["last_message"] = {
+                    "content": latest_message[0]["content"],
+                    "timestamp": latest_message[0]["created_at"]
+                }
+            
+            conversations.append(conversation_data)
     
     return jsonify({"status": "success", "data": conversations})
 
@@ -502,7 +634,7 @@ def get_messages(user_id):
             "sender_id": str(message["sender_id"]),
             "recipient_id": str(message["recipient_id"]),
             "content": message["content"],
-            "created_at": message["created_at"]
+            "timestamp": message["created_at"]  # Use timestamp instead of created_at for consistency
         })
     
     return jsonify({"status": "success", "data": formatted_messages})
@@ -529,7 +661,7 @@ def send_message(user_id):
         user_id, 
         "message", 
         f"You received a new message from {sender_name}",
-        str(current_user.id)
+        str(current_user.id)  # Store the sender's ID as related_id for message notifications
     )
     
     # Format message for response
@@ -538,14 +670,10 @@ def send_message(user_id):
         "sender_id": str(message["sender_id"]),
         "recipient_id": str(message["recipient_id"]),
         "content": message["content"],
-        "created_at": message["created_at"]
+        "timestamp": message["created_at"]  # Use timestamp instead of created_at for consistency
     }
     
-    return jsonify({
-        "status": "success", 
-        "message": "Message sent successfully", 
-        "data": formatted_message
-    }), 201
+    return jsonify({"status": "success", "data": formatted_message}), 201
 
 # Notification Routes
 @app.route('/api/notifications', methods=['GET'])
@@ -559,11 +687,11 @@ def get_notifications():
     for notification in notifications:
         formatted_notifications.append({
             "id": str(notification["_id"]),
-            "type": notification["type"],
             "content": notification["content"],
             "read": notification["read"],
-            "related_id": notification.get("related_id"),
-            "created_at": notification["created_at"]
+            "created_at": notification["created_at"],
+            "type": notification.get("type", "general"),
+            "related_user_id": notification.get("related_id")
         })
     
     return jsonify({"status": "success", "data": formatted_notifications})

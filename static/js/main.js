@@ -190,7 +190,7 @@ async function fetchMatches() {
                         </div>`;
                 });
                 
-                // Add event listeners to dynamically created buttons
+                // Set up event listeners after adding all matches to the DOM
                 setupProfileButtons();
             } else {
                 matchesContainer.innerHTML = "<p>Error loading matches. Please try again later.</p>";
@@ -270,12 +270,22 @@ async function fetchNotifications() {
                 result.data.forEach(notification => {
                     // Create notification element with appropriate styling based on read status
                     const notifClass = notification.read ? "notification" : "notification unread";
+                    
+                    // Check if notification has related user_id (for messages)
+                    const isMessageNotification = notification.related_user_id && notification.type === 'message';
+                    const notificationContent = isMessageNotification ? 
+                        `<div class="notification-content clickable" data-user-id="${notification.related_user_id}">
+                            <p>${notification.content}</p>
+                            <small>${new Date(notification.created_at).toLocaleString()}</small>
+                        </div>` :
+                        `<div class="notification-content">
+                            <p>${notification.content}</p>
+                            <small>${new Date(notification.created_at).toLocaleString()}</small>
+                        </div>`;
+                    
                     notificationsContainer.innerHTML += `
                         <div class="${notifClass}" data-notification-id="${notification.id}">
-                            <div class="notification-content">
-                                <p>${notification.content}</p>
-                                <small>${new Date(notification.created_at).toLocaleString()}</small>
-                            </div>
+                            ${notificationContent}
                             ${!notification.read ? '<button class="mark-read-btn">Mark as Read</button>' : ''}
                         </div>`;
                 });
@@ -305,10 +315,22 @@ async function fetchNotifications() {
                         }
                     });
                 });
+                
+                // Add event listeners for clickable notifications (messages)
+                document.querySelectorAll('.notification-content.clickable').forEach(content => {
+                    content.addEventListener('click', () => {
+                        const userId = content.getAttribute('data-user-id');
+                        if (userId) {
+                            window.location.href = `/messages/${userId}`;
+                        }
+                    });
+                });
+            } else {
+                notificationsContainer.innerHTML = "<p>Error loading notifications</p>";
             }
         } catch (error) {
             console.error("Error fetching notifications:", error);
-            notificationsContainer.innerHTML = "<p>Error loading notifications. Please try again later.</p>";
+            notificationsContainer.innerHTML = "<p>Error loading notifications</p>";
         }
     }
 }
