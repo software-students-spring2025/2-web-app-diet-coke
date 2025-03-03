@@ -31,7 +31,7 @@ app.secret_key = os.getenv('SECRET_KEY', 'your_secret_key_here')
 CORS(app)
 
 # Configure MongoDB
-mongo_uri = "mongodb://localhost:27017/travel_match_db"  # Hardcoded local URI for testing
+mongo_uri = os.getenv('MONGO_URI', 'mongodb://localhost:27017/')
 client = MongoClient(mongo_uri)
 db = client.travel_match_db
 
