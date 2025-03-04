@@ -54,29 +54,21 @@ function setupRegisterForm() {
     if (registerForm) {
         registerForm.addEventListener("submit", async (event) => {
             event.preventDefault();
-            
-            // Create JSON payload from form data
+
+            // Send data as FormData, not JSON
             const formData = new FormData(registerForm);
-            const payload = {
-                name: formData.get("name"),
-                email: formData.get("email"),
-                password: formData.get("password")
-            };
             
             try {
                 const response = await fetch("/api/auth/register", {
                     method: "POST",
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
+                    body: formData  
                 });
-                
+
                 const result = await response.json();
-                
-                if (response.ok && result.status === "success") {
-                    alert("Registration successful! Redirecting to profile page.");
-                    window.location.href = "/profile";
+
+                if (response.ok && result.success) {
+                    alert("Registration successful! Redirecting to login page.");
+                    window.location.href = "/login"; 
                 } else {
                     alert(result.message || "Registration failed. Please try again.");
                 }
