@@ -121,9 +121,7 @@ def messages_dashboard():
 @app.route('/api/auth/register', methods=['POST'])
 def register():
     """Register a new user"""
-    data = request.get_json()
-    if not data:
-        return jsonify({"status": "error", "message": "No data provided"}), 400
+    data = request.form  # ✅ Accept Form Data instead of JSON
     
     # Validate required fields
     required_fields = ['name', 'email', 'password']
