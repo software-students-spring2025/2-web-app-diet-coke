@@ -55,25 +55,27 @@ function setupRegisterForm() {
         registerForm.addEventListener("submit", async (event) => {
             event.preventDefault();
             
-            // Create JSON payload from form data
             const formData = new FormData(registerForm);
+            console.log("FormData: ", formData.get("name"), formData.get("email"), formData.get("password"));  // Debugging
+        
             const payload = {
                 name: formData.get("name"),
                 email: formData.get("email"),
                 password: formData.get("password")
             };
-            
+        
+            console.log("Payload being sent:", JSON.stringify(payload));  // Log payload to confirm
+        
             try {
                 const response = await fetch("/api/auth/register", {
                     method: "POST",
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                
+        
                 const result = await response.json();
-                
+                console.log("Server response:", result);  // Debugging
+        
                 if (response.ok && result.status === "success") {
                     alert("Registration successful! Redirecting to profile page.");
                     window.location.href = "/profile";
