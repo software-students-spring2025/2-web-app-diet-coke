@@ -27,9 +27,15 @@ https://github.com/software-students-spring2025/2-web-app-diet-coke/issues/
    ```
 
 2. **Set up a virtual environment**
-   ```bash
-   python -m venv venv
-   ```
+   - On Windows/macOS:
+     ```bash
+     python -m venv venv
+     ```
+   - On Ubuntu/Debian WSL systems:
+     ```bash
+     python3 -m venv venv
+     ```
+     Note: If you installed `python-is-python3` package, you can use `python` instead of `python3`.
 
 3. **Activate the virtual environment**
    - On Windows:
