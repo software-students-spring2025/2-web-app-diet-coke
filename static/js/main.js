@@ -56,7 +56,7 @@ function setupRegisterForm() {
             event.preventDefault();
             
             // Create JSON payload from form data
-            const formData = new FormData(registerForm);
+            const payload = Object.fromEntries(new FormData(registerForm).entries());
             const payload = {
                 name: formData.get("name"),
                 email: formData.get("email"),
