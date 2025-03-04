@@ -122,13 +122,17 @@ def messages_dashboard():
 def register():
     """Register a new user"""
     data = request.get_json()
+
+    # Debugging logs
+    print("Received JSON payload:", data)  
+
     if not data:
         return jsonify({"status": "error", "message": "No data provided"}), 400
-    
-    # Validate required fields
+
     required_fields = ['name', 'email', 'password']
     for field in required_fields:
         if field not in data:
+            print(f"Missing field: {field}")  # Debugging
             return jsonify({"status": "error", "message": f"Missing required field: {field}"}), 400
     
     # Check if user already exists
