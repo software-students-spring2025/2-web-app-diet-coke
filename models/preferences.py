@@ -1,11 +1,20 @@
+"""
+Model for travel preferences of a user.
+"""
 import datetime
 from bson import ObjectId
 from .db import db
 
 
 class TravelPreference:
+    """
+    Model for handling user travel preferences.
+    """
     @staticmethod
     def create_or_update(user_id, data):
+        """
+        Create or update a user's preferences.
+        """
         preference = {
             "user_id": ObjectId(user_id),
             "budget": data.get("budget", ""),
@@ -32,16 +41,25 @@ class TravelPreference:
 
     @staticmethod
     def get_by_user_id(user_id):
+        """
+        Get a user's preferences by ID.
+        """
         preference = db.travel_preferences.find_one({"user_id": ObjectId(user_id)})
         return preference
 
     @staticmethod
     def delete_by_user_id(user_id):
+        """
+        Delete a user's travel preferences.
+        """
         result = db.travel_preferences.delete_one({"user_id": ObjectId(user_id)})
         return result.deleted_count > 0
 
     @staticmethod
     def find_matches(user_id):
+        """
+        Find users with similar/matching preferences.
+        """
         user_pref = db.travel_preferences.find_one({"user_id": ObjectId(user_id)})
 
         if not user_pref:
